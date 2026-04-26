@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+npx eslint --fix "$CLAUDE_FILE_PATH" 2>/dev/null || true
