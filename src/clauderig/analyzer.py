@@ -1,63 +1,183 @@
 from __future__ import annotations
 import json
+import re
 from pathlib import Path
 
 
-def detect_stack(path: Path) -> str | None:
-    """Return one of five stack keys or None, based on marker files.
+# ---------------------------------------------------------------------------
+# Dependency file parsers
+# ---------------------------------------------------------------------------
 
-    Priority order:
-      1. python-django  (manage.py present — definitive)
-      2. react-native   (app.json with expo key)
-      3. react-web      (package.json with react dependency)
-      4. php            (composer.json present)
-      5. python-fastapi (requirements.txt or pyproject.toml contains 'fastapi')
-      6. python-django  (requirements.txt or pyproject.toml contains 'django')
+def _req_packages(text: str) -> set[str]:
+    """Return lowercase package names from requirements.txt content.
 
-    Note: php takes priority over requirements-based Django detection.
-    A project with both composer.json and a requirements.txt mentioning django
-    is treated as PHP.
+    Handles version specifiers, extras, environment markers, and VCS lines.
     """
-    # Django: manage.py is definitive
-    if (path / "manage.py").exists():
-        return "python-django"
+    names: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith(("#", "-", "git+", "http://", "https://")):
+            continue
+        line = line.split(";")[0].strip()  # drop environment markers
+        name = re.split(r"[\[><=!~@\s]", line)[0].strip().lower()
+        if name:
+            names.add(name)
+    return names
 
-    # React Native: app.json with expo key
+
+def _toml_packages(text: str) -> set[str]:
+    """Return lowercase package names from pyproject.toml dependency sections.
+
+    Handles both PEP 621 list format and Poetry table format.
+    """
+    names: set[str] = set()
+
+    # PEP 621: dependencies = ["fastapi>=0.100", ...]
+    for block in re.findall(r'dependencies\s*=\s*\[(.*?)\]', text, re.DOTALL):
+        for match in re.finditer(r'["\']([A-Za-z0-9][A-Za-z0-9._-]*)', block):
+            name = re.split(r"[\[><=!~@\s]", match.group(1))[0].lower()
+            if name:
+                names.add(name)
+
+    # Poetry: [tool.poetry.dependencies] / [tool.poetry.dev-dependencies]
+    in_section = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if re.match(r'\[tool\.poetry\.(?:dev-)?dependencies\]', line):
+            in_section = True
+            continue
+        if line.startswith("["):
+            in_section = False
+        if in_section and "=" in line and not line.startswith("#"):
+            name = re.split(r'[\s=\["\'<>!~\[]', line)[0].strip().lower()
+            if name and name != "python":
+                names.add(name)
+
+    return names
+
+
+# ---------------------------------------------------------------------------
+# Import scanner
+# ---------------------------------------------------------------------------
+
+def _has_import(path: Path, package: str) -> bool:
+    """Return True if any .py source file in the project imports the package."""
+    pattern = re.compile(
+        rf'^\s*(?:import\s+{re.escape(package)}|from\s+{re.escape(package)}\b)',
+        re.MULTILINE,
+    )
+    for py_file in [*path.glob("*.py"), *path.glob("*/*.py")]:
+        try:
+            if pattern.search(py_file.read_text(errors="ignore")):
+                return True
+        except OSError:
+            pass
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def detect_stack(path: Path) -> str | None:
+    """Detect the project stack using multi-signal scoring.
+
+    Signals checked (highest weight first):
+      - Import statements in source files          (+10)
+      - Definitive marker files (manage.py)        (+15)
+      - Framework-specific files (alembic, artisan)(+4–5)
+      - Properly parsed dependency declarations    (+6)
+      - Supporting files (wsgi, settings, urls)    (+3 each)
+
+    Returns one of: python-fastapi, python-django, php,
+    react-web, react-native — or None if no signals found.
+    """
+    scores: dict[str, int] = {
+        "python-fastapi": 0,
+        "python-django": 0,
+        "php": 0,
+        "react-web": 0,
+        "react-native": 0,
+    }
+
+    # --- React Native: app.json with expo key ---
     app_json = path / "app.json"
     if app_json.exists():
         try:
             data = json.loads(app_json.read_text())
             if "expo" in data:
-                return "react-native"
+                scores["react-native"] += 10
         except (json.JSONDecodeError, OSError):
             pass
 
-    # React Web: package.json with react dependency
+    # --- React Web / Native: package.json ---
     pkg_json = path / "package.json"
     if pkg_json.exists():
         try:
             data = json.loads(pkg_json.read_text())
             deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
-            if "react" in deps:  # exact key match — "react" not "react-router" etc.
-                return "react-web"
+            if "expo" in deps or "react-native" in deps:
+                scores["react-native"] += 8
+            elif "react" in deps:
+                scores["react-web"] += 8
         except (json.JSONDecodeError, OSError):
             pass
 
-    # PHP: composer.json
+    # --- PHP: composer.json (Laravel artisan gives bonus) ---
     if (path / "composer.json").exists():
-        return "php"
+        scores["php"] += 10
+    if (path / "artisan").exists():
+        scores["php"] += 5
 
-    # Python: requirements.txt or pyproject.toml
-    for filename in ("requirements.txt", "pyproject.toml"):
-        marker = path / filename
+    # --- Django: marker files ---
+    if (path / "manage.py").exists():
+        scores["python-django"] += 15  # definitive
+    for marker in ("wsgi.py", "asgi.py", "urls.py"):
+        if (path / marker).exists():
+            scores["python-django"] += 3
+    if (path / "settings.py").exists() or list(path.glob("*/settings.py")):
+        scores["python-django"] += 3
+
+    # --- FastAPI: alembic signals ---
+    if (path / "alembic.ini").exists() or (path / "alembic").is_dir():
+        scores["python-fastapi"] += 4
+
+    # --- Import scanning (beats stale dependency files) ---
+    if _has_import(path, "fastapi"):
+        scores["python-fastapi"] += 10
+    if _has_import(path, "django"):
+        scores["python-django"] += 10
+
+    # --- Dependency file parsing ---
+    packages: set[str] = set()
+
+    for dep_file in ("requirements.txt", "requirements-base.txt", "requirements/base.txt"):
+        marker = path / dep_file
         if marker.exists():
             try:
-                content = marker.read_text().lower()
-                if "fastapi" in content:
-                    return "python-fastapi"
-                if "django" in content:
-                    return "python-django"
+                packages |= _req_packages(marker.read_text(errors="replace"))
             except OSError:
                 pass
 
-    return None
+    pyproject = path / "pyproject.toml"
+    if pyproject.exists():
+        try:
+            packages |= _toml_packages(pyproject.read_text(errors="replace"))
+        except OSError:
+            pass
+
+    pipfile = path / "Pipfile"
+    if pipfile.exists():
+        try:
+            packages |= _req_packages(pipfile.read_text(errors="replace"))
+        except OSError:
+            pass
+
+    if "fastapi" in packages:
+        scores["python-fastapi"] += 6
+    if "django" in packages:
+        scores["python-django"] += 6
+
+    # --- Return stack with highest score ---
+    best = max(scores, key=lambda k: scores[k])
+    return best if scores[best] > 0 else None

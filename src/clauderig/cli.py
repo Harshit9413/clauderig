@@ -2,11 +2,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+import click
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from clauderig import __version__
+from clauderig.analyzer import detect_stack
 from clauderig.installer import install
 
 app = typer.Typer(
@@ -74,15 +76,24 @@ def init(
 ) -> None:
     """Bootstrap a .claude/ folder into a project."""
     interactive = lang is None
+    stack: str | None = None
 
     if interactive:
-        lang = typer.prompt("Primary language?", type=typer.Choice(["python", "php", "react"]))
-        if lang in ("python", "react"):
-            framework = typer.prompt("Framework?", type=typer.Choice(_LANG_FRAMEWORKS[lang]))
-        target_str = typer.prompt("Target directory?", default=".")
-        target = Path(target_str)
+        detected = detect_stack(target)
+        if detected:
+            console.print(f"[blue]→[/blue] Detected stack: [cyan]{_STACK_DISPLAY.get(detected, detected)}[/cyan]")
+            if typer.confirm("Use detected stack?", default=True):
+                stack = detected
 
-    stack = _resolve_stack(lang, framework)
+        if stack is None:
+            lang = typer.prompt("Primary language?", type=click.Choice(["python", "php", "react"]))
+            if lang in ("python", "react"):
+                framework = typer.prompt("Framework?", type=click.Choice(_LANG_FRAMEWORKS[lang]))
+            target_str = typer.prompt("Target directory?", default=".")
+            target = Path(target_str)
+
+    if stack is None:
+        stack = _resolve_stack(lang, framework)
 
     dst = target / ".claude"
     if dst.exists() and not force:
