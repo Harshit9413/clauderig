@@ -1,0 +1,62 @@
+name: Build and Release
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build Linux .deb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: chmod +x build-linux.sh && ./build-linux.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: dist/*.deb
+
+  build-macos-arm:
+    name: Build macOS Apple Silicon
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: |
+          pip install pyinstaller && pip install -r requirements.txt
+          chmod +x build-macos.sh && ./build-macos.sh
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - shell: pwsh
+        run: |
+          pip install pyinstaller
+          pip install -r requirements.txt
+          pyinstaller mytool.spec --distpath dist/windows --workpath build/windows --clean
+          Compress-Archive -Path dist/windows/mytool.exe -DestinationPath dist/mytool_windows_amd64.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

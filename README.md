@@ -1,5 +1,3 @@
-# clauderig
-
 Bootstrap a production-grade `.claude/` setup into any project — one command.
 
 ```bash
@@ -23,13 +21,13 @@ claude-setup init
 
 ## Supported Stacks
 
-| Stack | CLI flags | Commands | Skills | MCPs |
-|---|---|---|---|---|
-| Python → FastAPI | `--lang python --framework fastapi` | 5 | 3 | 3 |
-| Python → Django | `--lang python --framework django` | 5 | 3 | 3 |
-| PHP (Laravel) | `--lang php` | 4 | 2 | 3 |
-| React → Web | `--lang react --framework reactjs` | 4 | 3 | 3 |
-| React → Native | `--lang react --framework react-native` | 4 | 3 | 2 |
+| Stack             | CLI flags                                 | Commands | Skills | MCPs |
+| ----------------- | ----------------------------------------- | -------- | ------ | ---- |
+| Python → FastAPI | `--lang python --framework fastapi`     | 5        | 3      | 3    |
+| Python → Django  | `--lang python --framework django`      | 5        | 3      | 3    |
+| PHP (Laravel)     | `--lang php`                            | 4        | 2      | 3    |
+| React → Web      | `--lang react --framework reactjs`      | 4        | 3      | 3    |
+| React → Native   | `--lang react --framework react-native` | 4        | 3      | 2    |
 
 ---
 
@@ -80,6 +78,7 @@ claude-setup version
 After `claude-setup init`, open your project in Claude Code and run `/claude-fit`.
 
 Claude will:
+
 1. Scan your dependency files (`requirements.txt`, `package.json`, `composer.json`, etc.)
 2. Detect libraries you're actually using (SQLAlchemy, Redis, Stripe, etc.)
 3. Propose new skills and commands tailored to your specific project
@@ -93,12 +92,12 @@ This turns a generic `.claude/` setup into one that knows your exact project.
 
 Each stack ships with MCP servers pre-configured in `settings.json`. Claude Code reads these automatically.
 
-| MCP | FastAPI | Django | PHP | React Web | React Native |
-|---|---|---|---|---|---|
-| GitHub | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Filesystem | ✓ | ✓ | ✓ | ✓ | ✓ |
-| PostgreSQL | ✓ | ✓ | ✓ | | |
-| Playwright | | | | ✓ | |
+| MCP        | FastAPI | Django | PHP | React Web | React Native |
+| ---------- | ------- | ------ | --- | --------- | ------------ |
+| GitHub     | ✓      | ✓     | ✓  | ✓        | ✓           |
+| Filesystem | ✓      | ✓     | ✓  | ✓        | ✓           |
+| PostgreSQL | ✓      | ✓     | ✓  |           |              |
+| Playwright |         |        |     | ✓        |              |
 
 Run `.claude/hooks/setup-mcps.sh` once after init to install npm prerequisites.
 
