@@ -1,10 +1,12 @@
 name: Build and Release
+
 on:
   release:
     types: [created]
   workflow_dispatch:
 
 jobs:
+
   build-linux:
     name: Build Linux .deb
     runs-on: ubuntu-latest
@@ -33,13 +35,18 @@ jobs:
         with:
           python-version: "3.11"
       - run: |
-          pip install pyinstaller && pip install -r requirements.txt
+          pip install pyinstaller
+          pip install -r requirements.txt
           chmod +x build-macos.sh && ./build-macos.sh
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-arm-zip
+          path: dist/*.zip
 
   build-windows:
     name: Build Windows
@@ -53,10 +60,63 @@ jobs:
         run: |
           pip install pyinstaller
           pip install -r requirements.txt
-          pyinstaller mytool.spec --distpath dist/windows --workpath build/windows --clean
-          Compress-Archive -Path dist/windows/mytool.exe -DestinationPath dist/mytool_windows_amd64.zip
+          pyinstaller clauderig.spec --distpath dist/windows --workpath build/windows --clean
+          Compress-Archive -Path dist/windows/clauderig.exe -DestinationPath dist/clauderig_windows_amd64.zip
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [build-macos-arm]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-arm-zip
+          path: zips/
+      - id: sha
+        run: echo "arm64=$(sha256sum zips/*.zip | awk '{print $1}')" >> $GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          repository: harshit9413/homebrew-clauderig
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+      - run: |
+          VERSION=${{ github.ref_name }}
+          sed -i "s/version \".*\"/version \"${VERSION#v}\"/" homebrew-tap/Formula/clauderig.rb
+          sed -i "s/REPLACE_WITH_SHA256/${{ steps.sha.outputs.arm64 }}/" homebrew-tap/Formula/clauderig.rb
+          cd homebrew-tap
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add Formula/clauderig.rb
+          git commit -m "Update to ${{ github.ref_name }}"
+          git push
+
+  publish-apt:
+    name: Publish to APT Repo
+    runs-on: ubuntu-latest
+    needs: [build-linux]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: debs/
+      - uses: actions/checkout@v4
+        with:
+          repository: harshit9413/apt-repo
+          token: ${{ secrets.APT_REPO_TOKEN }}
+          ref: gh-pages
+          path: apt-repo
+      - run: |
+          sudo apt-get install -y reprepro
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
+          cd apt-repo
+          reprepro includedeb stable ../debs/*.deb
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add -A
+          git commit -m "Release ${{ github.ref_name }}"
+          git push
