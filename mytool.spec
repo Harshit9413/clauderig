@@ -1,6 +1,6 @@
 block_cipher = None
 APP_NAME = "mytool"
-ENTRY_POINT = "main.py"
+ENTRY_POINT = "src/clauderig/cli.py"
 
 a = Analysis([ENTRY_POINT], pathex=[], binaries=[], datas=[],
     hiddenimports=[], hookspath=[], hooksconfig={},
