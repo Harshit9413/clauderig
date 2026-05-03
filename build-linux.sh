@@ -30,6 +30,8 @@ Package: ${APP_NAME}
 Version: ${VERSION}
 Architecture: ${ARCH}
 Maintainer: ${MAINTAINER}
+Section: utils
+Priority: optional
 Description: ${DESCRIPTION}
 CTRL
 
