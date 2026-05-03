@@ -18,14 +18,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build binary in manylinux (GLIBC 2.17 compatibility)
+      - name: Build binary in Debian Bullseye (GLIBC 2.31 compatibility)
         run: |
           docker run --rm \
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
-            quay.io/pypa/manylinux2014_x86_64 \
-            bash -c "/opt/python/cp311-cp311/bin/pip install pyinstaller -r requirements.txt -q && \
-                     /opt/python/cp311-cp311/bin/pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean"
+            python:3.11-slim-bullseye \
+            bash -c "pip install pyinstaller -r requirements.txt -q && \
+                     pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean"
+          sudo chown -R "$USER:$USER" dist/ build/
       - name: Package as .deb
         run: |
           VERSION="${{ github.ref_name }}"
@@ -134,15 +135,7 @@ jobs:
       - run: |
           sudo apt-get install -y reprepro
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
-          echo "--- workspace contents ---"
-          ls -la "$GITHUB_WORKSPACE"
-          echo "--- debs/ contents ---"
-          ls -la "$GITHUB_WORKSPACE/debs/" || echo "debs/ directory not found"
           DEB=$(find "$GITHUB_WORKSPACE/debs" -name "*.deb" | head -1)
-          echo "Found deb: $DEB"
-          dpkg-deb --info "$DEB"
-          echo "--- conf/distributions ---"
-          cat "$GITHUB_WORKSPACE/apt-repo/conf/distributions"
           cd "$GITHUB_WORKSPACE/apt-repo"
           reprepro includedeb stable "$DEB"
           git config user.name "github-actions"

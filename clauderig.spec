@@ -4,23 +4,18 @@ block_cipher = None
 APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
 
-# SPECPATH is set by PyInstaller to the directory containing this spec file
+# SPECPATH is set by PyInstaller to the directory containing this spec file.
+# os.walk includes hidden dirs (.claude/) which datas=[] tuple silently skips.
 _tmpl_src = os.path.join(SPECPATH, "src", "clauderig", "templates")
-_tmpl_dst = os.path.join("clauderig", "templates")
-
-print(f"SPEC DEBUG: SPECPATH={SPECPATH}")
-print(f"SPEC DEBUG: templates src={_tmpl_src}")
-print(f"SPEC DEBUG: templates exists={os.path.isdir(_tmpl_src)}")
+_tmpl_dst = "clauderig/templates"
 
 _template_datas = []
 for _root, _dirs, _files in os.walk(_tmpl_src):
     for _f in _files:
         _src = os.path.join(_root, _f)
-        _rel = os.path.relpath(_root, _tmpl_src)
-        _dst = _tmpl_dst if _rel == "." else os.path.join(_tmpl_dst, _rel)
+        _rel = os.path.relpath(_root, _tmpl_src).replace(os.sep, "/")
+        _dst = _tmpl_dst if _rel == "." else f"{_tmpl_dst}/{_rel}"
         _template_datas.append((_src, _dst))
-
-print(f"SPEC DEBUG: collected {len(_template_datas)} template files")
 
 a = Analysis([ENTRY_POINT], pathex=[], binaries=[],
     datas=_template_datas,
