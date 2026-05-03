@@ -4,23 +4,26 @@ block_cipher = None
 APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
 
+# SPECPATH is set by PyInstaller to the directory containing this spec file
+_tmpl_src = os.path.join(SPECPATH, "src", "clauderig", "templates")
+_tmpl_dst = os.path.join("clauderig", "templates")
 
-def collect_templates():
-    """Walk templates dir manually so hidden dirs like .claude/ are included."""
-    result = []
-    src_base = os.path.join("src", "clauderig", "templates")
-    dst_base = os.path.join("clauderig", "templates")
-    for root, dirs, files in os.walk(src_base):
-        for f in files:
-            src_file = os.path.join(root, f)
-            rel = os.path.relpath(root, src_base)
-            dst_dir = dst_base if rel == "." else os.path.join(dst_base, rel)
-            result.append((src_file, dst_dir))
-    return result
+print(f"SPEC DEBUG: SPECPATH={SPECPATH}")
+print(f"SPEC DEBUG: templates src={_tmpl_src}")
+print(f"SPEC DEBUG: templates exists={os.path.isdir(_tmpl_src)}")
 
+_template_datas = []
+for _root, _dirs, _files in os.walk(_tmpl_src):
+    for _f in _files:
+        _src = os.path.join(_root, _f)
+        _rel = os.path.relpath(_root, _tmpl_src)
+        _dst = _tmpl_dst if _rel == "." else os.path.join(_tmpl_dst, _rel)
+        _template_datas.append((_src, _dst))
+
+print(f"SPEC DEBUG: collected {len(_template_datas)} template files")
 
 a = Analysis([ENTRY_POINT], pathex=[], binaries=[],
-    datas=collect_templates(),
+    datas=_template_datas,
     hiddenimports=[], hookspath=[], hooksconfig={},
     runtime_hooks=[], excludes=[], cipher=block_cipher, noarchive=False)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
