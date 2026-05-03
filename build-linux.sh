@@ -7,10 +7,11 @@ MAINTAINER="harshit jangid <harshitjangid99291@email.com>"
 DESCRIPTION="Bootstrap a production-grade .claude/ setup into any project, instantly."
 ARCH="amd64"
 
-pip install pyinstaller --quiet
-pip install -r requirements.txt --quiet
-
-pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean
+if [ -z "${SKIP_BUILD}" ]; then
+    pip install pyinstaller --quiet
+    pip install -r requirements.txt --quiet
+    pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean
+fi
 
 DEB_ROOT="dist/${APP_NAME}_${VERSION}_${ARCH}"
 mkdir -p "${DEB_ROOT}/DEBIAN" "${DEB_ROOT}/usr/local/bin" "${DEB_ROOT}/usr/share/doc/${APP_NAME}"

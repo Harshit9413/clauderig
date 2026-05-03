@@ -15,17 +15,23 @@ jobs:
 
   build-linux:
     name: Build Linux .deb
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: |
+      - name: Build binary in manylinux (GLIBC 2.17 compatibility)
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            bash -c "/opt/python/cp311-cp311/bin/pip install pyinstaller -r requirements.txt -q && \
+                     /opt/python/cp311-cp311/bin/pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean"
+      - name: Package as .deb
+        run: |
           VERSION="${{ github.ref_name }}"
           VERSION="${VERSION#v}"
           chmod +x build-linux.sh
-          APP_VERSION="$VERSION" ./build-linux.sh
+          APP_VERSION="$VERSION" SKIP_BUILD=1 ./build-linux.sh
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.deb
