@@ -4,13 +4,29 @@ import json
 import shutil
 import stat
 import sys
+import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
 
+def _ensure_templates(meipass: Path) -> Path:
+    templates_dir = meipass / "clauderig" / "templates"
+    if not templates_dir.exists():
+        zip_file = meipass / "templates_bundle.zip"
+        if not zip_file.exists():
+            raise RuntimeError(
+                f"clauderig bundle is corrupt: templates_bundle.zip not found in {meipass}"
+            )
+        templates_dir.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(str(zip_file)) as zf:
+            zf.extractall(str(templates_dir))
+    return templates_dir
+
+
 def _template_src(stack: str) -> Path:
     if getattr(sys, "frozen", False):
-        base = Path(sys._MEIPASS) / "clauderig" / "templates" / stack  # type: ignore[attr-defined]
+        templates_dir = _ensure_templates(Path(sys._MEIPASS))  # type: ignore[attr-defined]
+        base = templates_dir / stack
         with_dot_claude = base / ".claude"
         return with_dot_claude if with_dot_claude.is_dir() else base
     return Path(__file__).parent / "templates" / stack / ".claude"
