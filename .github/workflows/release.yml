@@ -26,6 +26,8 @@ jobs:
             python:3.11-slim-bullseye \
             bash -c "apt-get update -q && apt-get install -y -q binutils && \
                      pip install pyinstaller -r requirements.txt -q && \
+                     pip install -e . -q && \
+                     find . -name '*.pyc' -delete && \
                      pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean"
           sudo chown -R "$USER:$USER" dist/ build/
       - name: Package as .deb
@@ -57,6 +59,7 @@ jobs:
           VERSION="${VERSION#v}"
           pip install pyinstaller
           pip install -r requirements.txt
+          pip install -e .
           chmod +x build-macos.sh
           APP_VERSION="$VERSION" ./build-macos.sh
       - uses: softprops/action-gh-release@v2
@@ -82,6 +85,8 @@ jobs:
           $VERSION = "${{ github.ref_name }}".TrimStart("v")
           pip install pyinstaller
           pip install -r requirements.txt
+          pip install -e .
+          Get-ChildItem -Recurse -Filter "*.pyc" | Remove-Item -Force
           pyinstaller clauderig.spec --distpath dist/windows --workpath build/windows --clean
           Compress-Archive -Path dist/windows/clauderig.exe -DestinationPath "dist/clauderig_${VERSION}_windows_amd64.zip"
       - uses: softprops/action-gh-release@v2

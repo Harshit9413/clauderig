@@ -10,7 +10,9 @@ from pathlib import Path
 
 def _template_src(stack: str) -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS) / "clauderig" / "templates" / stack  # type: ignore[attr-defined]
+        base = Path(sys._MEIPASS) / "clauderig" / "templates" / stack  # type: ignore[attr-defined]
+        with_dot_claude = base / ".claude"
+        return with_dot_claude if with_dot_claude.is_dir() else base
     return Path(__file__).parent / "templates" / stack / ".claude"
 
 

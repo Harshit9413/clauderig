@@ -2,7 +2,7 @@
 set -e
 
 APP_NAME="clauderig"
-VERSION="${APP_VERSION:-1.0.4}"
+VERSION="${APP_VERSION:-1.0.5}"
 MAINTAINER="harshit jangid <harshitjangid99291@gmail.com>"
 DESCRIPTION="Bootstrap a production-grade .claude/ setup into any project, instantly."
 ARCH="amd64"
@@ -10,6 +10,9 @@ ARCH="amd64"
 if [ -z "${SKIP_BUILD}" ]; then
     pip install pyinstaller --quiet
     pip install -r requirements.txt --quiet
+    pip install -e . --quiet
+    find . -name "*.pyc" -delete
+    find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null; true
     pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean
 fi
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -e
 APP_NAME="clauderig"
-VERSION="${APP_VERSION:-1.0.4}"
+VERSION="${APP_VERSION:-1.0.5}"
 
 echo "Installing dependencies..."
 pip3 install pyinstaller --quiet
 pip3 install -r requirements.txt --quiet
+pip3 install -e . --quiet
 
 ARCH=$(uname -m)
 
