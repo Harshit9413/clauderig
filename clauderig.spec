@@ -2,8 +2,15 @@ block_cipher = None
 APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
 
+# Tree() includes hidden directories (like .claude/) that datas=[] skips
+template_tree = Tree(
+    "src/clauderig/templates",
+    prefix="clauderig/templates",
+    excludes=["__pycache__", "*.pyc"],
+)
+
 a = Analysis([ENTRY_POINT], pathex=[], binaries=[],
-    datas=[("src/clauderig/templates", "clauderig/templates")],
+    datas=template_tree,
     hiddenimports=[], hookspath=[], hooksconfig={},
     runtime_hooks=[], excludes=[], cipher=block_cipher, noarchive=False)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
