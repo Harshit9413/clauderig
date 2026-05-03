@@ -1,8 +1,11 @@
 import os
+import sys
 
 block_cipher = None
 APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
+
+sys.path.insert(0, os.path.join(SPECPATH, "src"))
 
 _tmpl_src = os.path.join(SPECPATH, "src", "clauderig", "templates")
 _tmpl_dst = "clauderig/templates"

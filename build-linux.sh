@@ -2,7 +2,7 @@
 set -e
 
 APP_NAME="clauderig"
-VERSION="${APP_VERSION:-1.0.5}"
+VERSION="${APP_VERSION:-1.0.6}"
 MAINTAINER="harshit jangid <harshitjangid99291@gmail.com>"
 DESCRIPTION="Bootstrap a production-grade .claude/ setup into any project, instantly."
 ARCH="amd64"
