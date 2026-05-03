@@ -24,7 +24,8 @@ jobs:
             -v "$GITHUB_WORKSPACE:/work" \
             -w /work \
             python:3.11-slim-bullseye \
-            bash -c "pip install pyinstaller -r requirements.txt -q && \
+            bash -c "apt-get update -q && apt-get install -y -q binutils && \
+                     pip install pyinstaller -r requirements.txt -q && \
                      pyinstaller clauderig.spec --distpath dist/linux --workpath build/linux --clean"
           sudo chown -R "$USER:$USER" dist/ build/
       - name: Package as .deb
