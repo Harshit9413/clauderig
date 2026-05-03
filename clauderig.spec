@@ -19,7 +19,7 @@ with zipfile.ZipFile(_zip_path, "w", zipfile.ZIP_DEFLATED) as _zf:
             _zf.write(_src_file, _arc_name)
 
 a = Analysis([ENTRY_POINT], pathex=["src"], binaries=[],
-    datas=[(_zip_path, "clauderig")],
+    datas=[(_zip_path, ".")],
     hiddenimports=[], hookspath=[], hooksconfig={},
     runtime_hooks=["rthook_clauderig.py"], excludes=[], cipher=block_cipher, noarchive=False)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
