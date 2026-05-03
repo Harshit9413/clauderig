@@ -126,7 +126,7 @@ jobs:
           sudo apt-get install -y reprepro
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
           echo "--- .deb control file contents ---"
-          dpkg-deb --info ../debs/*.deb
+          dpkg-deb --info debs/*.deb
           echo "--- conf/distributions ---"
           cat apt-repo/conf/distributions
           cd apt-repo
