@@ -2,7 +2,8 @@ block_cipher = None
 APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
 
-a = Analysis([ENTRY_POINT], pathex=[], binaries=[], datas=[],
+a = Analysis([ENTRY_POINT], pathex=[], binaries=[],
+    datas=[("src/clauderig/templates", "clauderig/templates")],
     hiddenimports=[], hookspath=[], hooksconfig={},
     runtime_hooks=[], excludes=[], cipher=block_cipher, noarchive=False)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)

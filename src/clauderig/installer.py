@@ -1,11 +1,18 @@
 from __future__ import annotations
 import asyncio
-import importlib.resources
 import json
 import shutil
 import stat
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+def _templates_root() -> Path:
+    # PyInstaller extracts bundled data to sys._MEIPASS at runtime
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS) / "clauderig" / "templates"  # type: ignore[attr-defined]
+    return Path(__file__).parent / "templates"
 
 
 VALID_STACKS = frozenset({
@@ -72,8 +79,7 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
             f"`.claude/` already exists at {dst}. Use --force to overwrite."
         )
 
-    # Use __file__-relative path for reliable access in editable installs
-    src_path = Path(__file__).parent / "templates" / stack / ".claude"
+    src_path = _templates_root() / stack / ".claude"
 
     if dry_run:
         for item in sorted(src_path.rglob("*")):

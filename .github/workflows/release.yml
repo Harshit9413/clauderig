@@ -15,7 +15,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: chmod +x build-linux.sh && ./build-linux.sh
+      - run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          chmod +x build-linux.sh
+          APP_VERSION="$VERSION" ./build-linux.sh
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.deb
@@ -35,9 +39,12 @@ jobs:
         with:
           python-version: "3.11"
       - run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
           pip install pyinstaller
           pip install -r requirements.txt
-          chmod +x build-macos.sh && ./build-macos.sh
+          chmod +x build-macos.sh
+          APP_VERSION="$VERSION" ./build-macos.sh
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
@@ -58,10 +65,11 @@ jobs:
           python-version: "3.11"
       - shell: pwsh
         run: |
+          $VERSION = "${{ github.ref_name }}".TrimStart("v")
           pip install pyinstaller
           pip install -r requirements.txt
           pyinstaller clauderig.spec --distpath dist/windows --workpath build/windows --clean
-          Compress-Archive -Path dist/windows/clauderig.exe -DestinationPath dist/clauderig_windows_amd64.zip
+          Compress-Archive -Path dist/windows/clauderig.exe -DestinationPath "dist/clauderig_${VERSION}_windows_amd64.zip"
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*.zip
@@ -86,8 +94,9 @@ jobs:
           path: homebrew-tap
       - run: |
           VERSION=${{ github.ref_name }}
-          sed -i "s/version \".*\"/version \"${VERSION#v}\"/" homebrew-tap/Formula/clauderig.rb
-          sed -i "s/REPLACE_WITH_SHA256/${{ steps.sha.outputs.arm64 }}/" homebrew-tap/Formula/clauderig.rb
+          VERSION="${VERSION#v}"
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" homebrew-tap/Formula/clauderig.rb
+          sed -i "s/sha256 \"REPLACE_WITH_SHA256_ARM64\"/sha256 \"${{ steps.sha.outputs.arm64 }}\"/" homebrew-tap/Formula/clauderig.rb
           cd homebrew-tap
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
