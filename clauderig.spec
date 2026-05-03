@@ -23,7 +23,7 @@ for _root, _dirs, _files in os.walk(_tmpl_src):
 a = Analysis([ENTRY_POINT], pathex=["src"], binaries=[],
     datas=_template_datas,
     hiddenimports=[], hookspath=[], hooksconfig={},
-    runtime_hooks=[], excludes=[], cipher=block_cipher, noarchive=False)
+    runtime_hooks=["rthook_clauderig.py"], excludes=[], cipher=block_cipher, noarchive=False)
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(pyz, a.scripts, a.binaries, a.zipfiles, a.datas, [],
     name=APP_NAME, debug=False, bootloader_ignore_signals=False,
