@@ -10,3 +10,4 @@ venv/
 .coverage
 htmlcov/
 *.whl
+templates_bundle.zip

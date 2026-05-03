@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "clauderig"
-version = "1.0.7"
+version = "1.0.8"
 description = "Bootstrap a production-grade .claude/ setup into any project, instantly."
 readme = "README.md"
 license = { text = "MIT" }
