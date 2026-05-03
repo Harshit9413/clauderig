@@ -17,7 +17,7 @@ for _root, _dirs, _files in os.walk(_tmpl_src):
     for _f in _files:
         _template_datas.append((os.path.join(_root, _f), _dst))
 
-a = Analysis([ENTRY_POINT], pathex=[], binaries=[],
+a = Analysis([ENTRY_POINT], pathex=["src"], binaries=[],
     datas=_template_datas,
     hiddenimports=[], hookspath=[], hooksconfig={},
     runtime_hooks=[], excludes=[], cipher=block_cipher, noarchive=False)
