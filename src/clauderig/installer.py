@@ -8,11 +8,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-def _templates_root() -> Path:
-    # PyInstaller extracts bundled data to sys._MEIPASS at runtime
+def _template_src(stack: str) -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS) / "clauderig" / "templates"  # type: ignore[attr-defined]
-    return Path(__file__).parent / "templates"
+        return Path(sys._MEIPASS) / "clauderig" / "templates" / stack  # type: ignore[attr-defined]
+    return Path(__file__).parent / "templates" / stack / ".claude"
 
 
 VALID_STACKS = frozenset({
@@ -79,7 +78,7 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
             f"`.claude/` already exists at {dst}. Use --force to overwrite."
         )
 
-    src_path = _templates_root() / stack / ".claude"
+    src_path = _template_src(stack)
 
     if dry_run:
         for item in sorted(src_path.rglob("*")):

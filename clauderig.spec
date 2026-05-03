@@ -4,18 +4,18 @@ block_cipher = None
 APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
 
-# SPECPATH is set by PyInstaller to the directory containing this spec file.
-# os.walk includes hidden dirs (.claude/) which datas=[] tuple silently skips.
 _tmpl_src = os.path.join(SPECPATH, "src", "clauderig", "templates")
 _tmpl_dst = "clauderig/templates"
 
 _template_datas = []
 for _root, _dirs, _files in os.walk(_tmpl_src):
+    _rel_root = os.path.relpath(_root, _tmpl_src).replace(os.sep, "/")
+    if ".claude" not in _rel_root:
+        continue
+    _rel_clean = _rel_root.replace("/.claude", "").replace(".claude/", "").replace(".claude", "")
+    _dst = _tmpl_dst if not _rel_clean else f"{_tmpl_dst}/{_rel_clean}"
     for _f in _files:
-        _src = os.path.join(_root, _f)
-        _rel = os.path.relpath(_root, _tmpl_src).replace(os.sep, "/")
-        _dst = _tmpl_dst if _rel == "." else f"{_tmpl_dst}/{_rel}"
-        _template_datas.append((_src, _dst))
+        _template_datas.append((os.path.join(_root, _f), _dst))
 
 a = Analysis([ENTRY_POINT], pathex=[], binaries=[],
     datas=_template_datas,
