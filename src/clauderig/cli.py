@@ -156,3 +156,6 @@ def list_stacks() -> None:
 def version() -> None:
     """Print the clauderig version."""
     console.print(f"clauderig {__version__}")
+
+if __name__ == "__main__":
+    app()
