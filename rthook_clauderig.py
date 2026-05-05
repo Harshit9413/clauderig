@@ -10,6 +10,11 @@ if getattr(sys, "frozen", False):
             f"clauderig bundle is corrupt: templates_bundle.zip not found in {_meipass}"
         )
     _templates_dir = _meipass / "clauderig" / "templates"
-    _templates_dir.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(str(_zip_file)) as _zf:
-        _zf.extractall(str(_templates_dir))
+    _sentinel = _templates_dir / "python-fastapi"
+    if not _sentinel.exists():
+        try:
+            _templates_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(str(_zip_file)) as _zf:
+                _zf.extractall(str(_templates_dir))
+        except OSError:
+            pass  # installer.py _ensure_templates will retry extraction

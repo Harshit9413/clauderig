@@ -11,7 +11,10 @@ from pathlib import Path
 
 def _ensure_templates(meipass: Path) -> Path:
     templates_dir = meipass / "clauderig" / "templates"
-    if not templates_dir.exists():
+    # Check for actual content — the directory may exist but be empty if PyInstaller
+    # created it as part of the package structure or the rthook extraction failed.
+    sentinel = templates_dir / "python-fastapi" / ".claude"
+    if not sentinel.is_dir():
         zip_file = meipass / "templates_bundle.zip"
         if not zip_file.exists():
             raise RuntimeError(
