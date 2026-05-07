@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 APP_NAME="clauderig"
-VERSION="${APP_VERSION:-1.0.10}"
+VERSION="${APP_VERSION:-1.0.11}"
 
 echo "Installing dependencies..."
 pip3 install pyinstaller --quiet

@@ -5,16 +5,14 @@ import shutil
 import stat
 import sys
 import zipfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 
 def _ensure_templates(meipass: Path) -> Path:
-    templates_dir = meipass / "clauderig" / "templates"
-    # Check for actual content — the directory may exist but be empty if PyInstaller
-    # created it as part of the package structure or the rthook extraction failed.
+    templates_dir = meipass / "templates"
     sentinel = templates_dir / "python-fastapi" / ".claude"
-    if not sentinel.is_dir():
+    if not sentinel.exists():
         zip_file = meipass / "templates_bundle.zip"
         if not zip_file.exists():
             raise RuntimeError(
@@ -22,7 +20,12 @@ def _ensure_templates(meipass: Path) -> Path:
             )
         templates_dir.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(str(zip_file)) as zf:
-            zf.extractall(str(templates_dir))
+            for member in zf.infolist():
+                target = templates_dir / member.filename
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if not member.filename.endswith("/"):
+                    with zf.open(member) as src, open(target, "wb") as dst:
+                        dst.write(src.read())
     return templates_dir
 
 
@@ -101,6 +104,12 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
 
     src_path = _template_src(stack)
 
+    if not src_path.is_dir():
+        raise FileNotFoundError(
+            f"Template source not found: {src_path}. "
+            "The binary bundle may be corrupt — please reinstall clauderig."
+        )
+
     if dry_run:
         for item in sorted(src_path.rglob("*")):
             if item.is_file():
@@ -110,7 +119,10 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
             ruleset_count=0, mcps_configured=[], target_path=dst,
         )
 
-    shutil.copytree(str(src_path), str(dst), dirs_exist_ok=force)
+    if dst.exists() and force:
+        shutil.rmtree(str(dst))
+
+    shutil.copytree(str(src_path), str(dst))
 
     hooks_dir = dst / "hooks"
     if hooks_dir.exists():

@@ -11,11 +11,12 @@ sys.path.insert(0, os.path.join(SPECPATH, "src"))
 _tmpl_src = os.path.join(SPECPATH, "src", "clauderig", "templates")
 _zip_path = os.path.join(SPECPATH, "templates_bundle.zip")
 
+_base = os.path.join(SPECPATH, "src", "clauderig", "templates")
 with zipfile.ZipFile(_zip_path, "w", zipfile.ZIP_DEFLATED) as _zf:
     for _root, _dirs, _files in os.walk(_tmpl_src):
         for _f in _files:
             _src_file = os.path.join(_root, _f)
-            _arc_name = os.path.relpath(_src_file, _tmpl_src).replace(os.sep, "/")
+            _arc_name = os.path.relpath(_src_file, _base).replace(os.sep, "/")
             _zf.write(_src_file, _arc_name)
 
 a = Analysis([ENTRY_POINT], pathex=["src"], binaries=[],

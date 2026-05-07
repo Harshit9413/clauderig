@@ -1,4 +1,3 @@
-
 # clauderig
 
 **Bootstrap a production-grade `.claude/` setup into any project — one command.**
@@ -6,6 +5,50 @@
 [![PyPI](https://img.shields.io/pypi/v/clauderig)](https://pypi.org/project/clauderig/)
 [![Python](https://img.shields.io/pypi/pyversions/clauderig)](https://pypi.org/project/clauderig/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://claude.ai/chat/LICENSE)
+
+---
+
+## Install
+
+### Linux (Debian / Ubuntu)
+
+```bash
+# 1. Add the APT repository (only needs to be done once)
+echo "deb [trusted=yes] https://harshit9413.github.io/apt-repo stable main" | \
+    sudo tee /etc/apt/sources.list.d/clauderig.list
+
+# 2. Update and install
+sudo apt update && sudo apt install clauderig
+
+# 3. Run
+cd ~/projects/my-django-app
+clauderig init
+
+# To update
+sudo apt update && sudo apt upgrade clauderig
+```
+
+### macOS
+
+```bash
+# 1. Add the Homebrew tap (only needs to be done once)
+brew tap harshit9413/clauderig
+
+# 2. Install
+brew install clauderig
+
+# 3. Go to any project
+cd ~/projects/my-fastapi-app
+
+# 4. Run clauderig
+claude-setup init
+# → Auto-detects: "Python → FastAPI"
+# → Asks: "Use detected stack? [Y/n]"
+# → Press Y
+# → Creates .claude/ folder in your project
+```
+
+### Via PyPI (all platforms)
 
 ```bash
 pipx install clauderig
@@ -15,6 +58,8 @@ claude-setup init
 
 > **Note:** Installed via `pip` or `pipx`? Use `claude-setup`.
 > Installed via `apt` or `brew`? Use `clauderig`.
+
+Requires  **Python 3.10+** .
 
 ---
 
@@ -57,69 +102,6 @@ It ships real, opinionated content: actual code patterns, working MCP server con
 | React → Native   | `--lang react --framework react-native` | 4        | 3      | 2    |
 
 ---
-
-## Install
-
-### Linux (Debian / Ubuntu)
-
-```bash
-# 1. Add the APT repository (only needs to be done once)
-echo "deb [trusted=yes] https://harshit9413.github.io/apt-repo stable main" | \
-    sudo tee /etc/apt/sources.list.d/clauderig.list
-
-# 2. Update and install
-sudo apt update && sudo apt install clauderig
-
-# 3. Run
-cd ~/projects/my-django-app
-clauderig init
-
-# To update
-sudo apt update && sudo apt upgrade clauderig
-```
-
-### macOS
-
-```bash
-# 1. Add the Homebrew tap (only needs to be done once)
-brew tap harshit9413/clauderig
-
-# 2. Install
-brew install clauderig
-
-# 3. Go to any project
-cd ~/projects/my-fastapi-app
-
-# 4. Run clauderig
-clauderig init
-# → Auto-detects: "Python → FastAPI"
-# → Asks: "Use detected stack? [Y/n]"
-# → Press Y
-# → Creates .claude/ folder in your project
-```
-
-### Via PyPI (all platforms)
-
-```bash
-# Recommended — isolated environment
-pipx install clauderig
-
-# Or with pip
-pip install clauderig
-```
-
-> **Note:** When installed via `pip` or `pipx`, the command is `claude-setup`.
-> When installed via `apt` (Linux) or `brew` (macOS), the command is `clauderig`.
-
-```bash
-# pip / pipx install → use this
-claude-setup init
-
-# apt / brew install → use this
-clauderig init
-```
-
-Requires  **Python 3.10+** .
 
 ---
 

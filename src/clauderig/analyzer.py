@@ -181,3 +181,119 @@ def detect_stack(path: Path) -> str | None:
     # --- Return stack with highest score ---
     best = max(scores, key=lambda k: scores[k])
     return best if scores[best] > 0 else None
+
+
+def detect_framework(path: Path, lang: str) -> str | None:
+    """Best-effort framework detection for a known language.
+
+    Used as a fallback when detect_stack() finds no full-stack signals
+    but detect_language() identified the language.
+    Returns a framework key like 'fastapi', 'django', 'reactjs', 'react-native',
+    or None if signals are ambiguous or absent.
+    """
+    if lang == "python":
+        packages: set[str] = set()
+        for dep_file in ("requirements.txt", "requirements-base.txt", "requirements/base.txt"):
+            marker = path / dep_file
+            if marker.exists():
+                try:
+                    packages |= _req_packages(marker.read_text(errors="replace"))
+                except OSError:
+                    pass
+        pyproject = path / "pyproject.toml"
+        if pyproject.exists():
+            try:
+                packages |= _toml_packages(pyproject.read_text(errors="replace"))
+            except OSError:
+                pass
+        pipfile = path / "Pipfile"
+        if pipfile.exists():
+            try:
+                packages |= _req_packages(pipfile.read_text(errors="replace"))
+            except OSError:
+                pass
+
+        django_score = 0
+        if (path / "manage.py").exists():
+            django_score += 15
+        for marker in ("wsgi.py", "asgi.py", "urls.py"):
+            if (path / marker).exists():
+                django_score += 3
+        if (path / "settings.py").exists() or list(path.glob("*/settings.py")):
+            django_score += 3
+        if _has_import(path, "django"):
+            django_score += 10
+        if "django" in packages:
+            django_score += 6
+
+        fastapi_score = 0
+        if (path / "alembic.ini").exists() or (path / "alembic").is_dir():
+            fastapi_score += 4
+        if _has_import(path, "fastapi"):
+            fastapi_score += 10
+        if "fastapi" in packages:
+            fastapi_score += 6
+
+        if django_score > 0 and django_score >= fastapi_score:
+            return "django"
+        if fastapi_score > 0 and fastapi_score > django_score:
+            return "fastapi"
+        return None
+
+    if lang == "react":
+        app_json = path / "app.json"
+        if app_json.exists():
+            try:
+                data = json.loads(app_json.read_text())
+                if "expo" in data:
+                    return "react-native"
+            except (json.JSONDecodeError, OSError):
+                pass
+        pkg_json = path / "package.json"
+        if pkg_json.exists():
+            try:
+                data = json.loads(pkg_json.read_text())
+                deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+                if "expo" in deps or "react-native" in deps:
+                    return "react-native"
+                if "react" in deps:
+                    return "reactjs"
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    return None
+
+
+def detect_language(path: Path) -> str | None:
+    """Return the primary language when full stack detection fails.
+
+    Checks file-system signals only — no parsing required.
+    Returns 'python', 'php', or 'react', or None if ambiguous.
+    """
+    # PHP: composer.json or any .php file in root
+    if (path / "composer.json").exists() or list(path.glob("*.php")):
+        return "php"
+
+    # React: package.json that lists react/expo as a dependency
+    pkg_json = path / "package.json"
+    if pkg_json.exists():
+        try:
+            data = json.loads(pkg_json.read_text())
+            deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+            if "react" in deps or "react-native" in deps or "expo" in deps:
+                return "react"
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Python: any standard project descriptor or .py files in root
+    python_markers = [
+        path / "pyproject.toml",
+        path / "requirements.txt",
+        path / "setup.py",
+        path / "setup.cfg",
+        path / "Pipfile",
+    ]
+    if any(m.exists() for m in python_markers) or list(path.glob("*.py")):
+        return "python"
+
+    return None
