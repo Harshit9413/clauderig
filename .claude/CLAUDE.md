@@ -70,4 +70,3 @@ No database, no ORM, no web framework.
 ## MCP Servers
 - **GitHub MCP** — browse issues/PRs. Needs: `GITHUB_TOKEN` env var.
 - **Filesystem MCP** — read/write project files. Pre-configured.
-- Remove the Postgres MCP entry from `settings.json` — this project has no database.

@@ -1,13 +1,29 @@
 {
   "permissions": {
     "allow": ["Read", "Edit", "Bash(git:*)", "Bash(pytest:*)"],
-    "deny": ["Bash(rm -rf:*)", "Bash(sudo:*)", "Read(.env)", "Read(**/secrets/**)", "Read(**/.git/**)"]
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(sudo:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f :*)",
+      "Bash(DROP TABLE:*)",
+      "Bash(DROP DATABASE:*)",
+      "Read(.env)",
+      "Read(**/.env)",
+      "Read(**/secrets/**)",
+      "Read(**/.git/**)"
+    ]
   },
   "hooks": {
-    "PostToolUse": [
+    "PreToolUse": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": ".claude/hooks/post-edit-lint.sh" }]
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": ".claude/hooks/scripts/firewall.sh" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": ".claude/hooks/scripts/test-enforcer.sh" }]
       }
     ]
   },
@@ -20,10 +36,6 @@
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "."]
-    },
-    "postgres": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres", "${DATABASE_URL}"]
     }
   }
 }
