@@ -1,85 +1,106 @@
 ---
-name: pydantic-models
-description: Pydantic v2 patterns for validation, serialization, and settings management.
+name: dataclasses-and-validation
+description: Dataclass patterns and input validation as used in clauderig (InstallResult, VALID_STACKS, stack resolution).
 ---
 
-# Pydantic v2 Models
+# Dataclasses and Validation Patterns (clauderig)
 
-## Separate Input and Output Schemas
+## InstallResult Dataclass
 
-```python
-# app/schemas/user.py
-from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
-from datetime import datetime
-
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    name: str
-
-    @field_validator("password")
-    @classmethod
-    def strong_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
-        return v
-
-class UserResponse(BaseModel):
-    id: int
-    email: str
-    name: str
-    created_at: datetime
-    model_config = ConfigDict(from_attributes=True)  # replaces orm_mode=True
-
-class UserUpdate(BaseModel):
-    name: str | None = None
-    email: EmailStr | None = None
-```
-
-## Settings
+Returned from `install()` to carry structured results — never use raw dicts.
 
 ```python
-# app/config.py
-from pydantic_settings import BaseSettings, SettingsConfigDict
+# src/clauderig/installer.py
+from dataclasses import dataclass
+from pathlib import Path
 
-class Settings(BaseSettings):
-    database_url: str
-    secret_key: str
-    debug: bool = False
-    cors_origins: list[str] = []
-    model_config = SettingsConfigDict(env_file=".env")
-
-settings = Settings()
+@dataclass
+class InstallResult:
+    commands_count: int
+    skills_count: int
+    hooks_count: int
+    ruleset_count: int
+    mcps_configured: list[str]
+    target_path: Path
 ```
 
-## Field Constraints
+## Adding Fields to InstallResult
+
+Add the field to the dataclass, then update all `InstallResult(...)` construction sites — there is one in `install()` and one in the `dry_run` early-return path.
 
 ```python
-from pydantic import Field
+@dataclass
+class InstallResult:
+    commands_count: int
+    skills_count: int
+    hooks_count: int
+    ruleset_count: int
+    mcps_configured: list[str]
+    target_path: Path
+    warnings: list[str] = None  # use field(default_factory=list) in practice
 
-class Product(BaseModel):
-    name: str = Field(min_length=1, max_length=200)
-    price: float = Field(gt=0, description="Price in USD")
-    tags: list[str] = Field(default_factory=list)
+    def __post_init__(self):
+        if self.warnings is None:
+            self.warnings = []
 ```
 
-## Cross-Field Validation
+## Stack Validation
 
 ```python
-from pydantic import model_validator
+# src/clauderig/installer.py
+VALID_STACKS = frozenset({
+    "python-fastapi",
+    "python-django",
+    "php",
+    "react-web",
+    "react-native",
+})
 
-class DateRange(BaseModel):
-    start: datetime
-    end: datetime
-
-    @model_validator(mode="after")
-    def end_after_start(self) -> "DateRange":
-        if self.end <= self.start:
-            raise ValueError("end must be after start")
-        return self
+def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResult:
+    if stack not in VALID_STACKS:
+        raise ValueError(f"Unknown stack: {stack!r}. Valid: {sorted(VALID_STACKS)}")
 ```
 
-## Common Gotcha
+## Stack Resolution in CLI
 
-Pydantic v2 replaces `class Config: orm_mode = True` with
-`model_config = ConfigDict(from_attributes=True)`. The old style silently no-ops.
+```python
+# src/clauderig/cli.py
+_STACK_KEY: dict[str, str] = {
+    "fastapi": "python-fastapi",
+    "django": "python-django",
+    "reactjs": "react-web",
+    "react-native": "react-native",
+    "php": "php",
+}
+
+def _resolve_stack(lang: str, framework: str | None) -> str:
+    if lang == "php":
+        return "php"
+    valid = _LANG_FRAMEWORKS[lang]
+    if framework not in valid:
+        console.print(f"[red]Error:[/red] ...")
+        raise typer.Exit(1)
+    return _STACK_KEY[framework]
+```
+
+## Adding a New Stack
+
+1. Add template tree: `src/clauderig/templates/<new-key>/.claude/`
+2. Add to `VALID_STACKS` in `installer.py`
+3. Add to `_STACK_KEY`, `_STACK_INFO`, `_STACK_DISPLAY`, `_LANG_FRAMEWORKS` in `cli.py`
+4. Add detection signals to `detect_stack()` in `analyzer.py`
+
+## JSON File Parsing (used in _get_mcps)
+
+```python
+# src/clauderig/installer.py
+def _get_mcps(settings_path: Path) -> list[str]:
+    if not settings_path.exists():
+        return []
+    try:
+        return list(json.loads(settings_path.read_text()).get("mcpServers", {}).keys())
+    except (json.JSONDecodeError, OSError):
+        return []
+```
+
+Pattern: always return a safe default; catch both decode and IO errors; never let a bad config crash the install.

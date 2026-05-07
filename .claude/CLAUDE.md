@@ -1,43 +1,73 @@
-# Project Rules — FastAPI
+# Project Rules — clauderig
 
 ## Stack
-Python 3.10+, FastAPI, Pydantic v2, SQLAlchemy 2.x async, Alembic, pytest + httpx.
+Python 3.10+, Typer 0.12+, Rich 13+, asyncio (stdlib), PyInstaller (binary builds), pytest 8+ + pytest-cov 5+.
+
+No database, no ORM, no web framework.
+
+## Dev Commands
+- Install:  `pip install -e .`
+- Run CLI:  `claude-setup init` (or `python -m clauderig`)
+- Test:     `pytest -xvs`
+- Coverage: `pytest --cov=clauderig --cov-report=term-missing`
+- Lint:     `ruff check .`
+- Format:   `ruff format .`
+- Build PyPI pkg: `python -m build`
+- Build binary: `bash build-macos.sh` / `bash build-linux.sh`
+
+## Project Structure
+- `src/clauderig/cli.py` — Typer app, three commands: `init`, `list`, `version`
+- `src/clauderig/installer.py` — template copy logic, `InstallResult` dataclass, async MCP probing
+- `src/clauderig/analyzer.py` — multi-signal stack/framework/language detection
+- `src/clauderig/templates/` — five stack-specific `.claude/` template trees
+- `src/clauderig/__init__.py` — version via `importlib.metadata`
+- `clauderig.spec` — PyInstaller spec (bundles templates as zip)
+- `build-macos.sh`, `build-linux.sh` — binary release scripts
+
+## Supported Stacks (template keys)
+- `python-fastapi`
+- `python-django`
+- `php`
+- `react-web`
+- `react-native`
 
 ## Code Style
-- PEP 8. Use `ruff` for linting (`ruff check --fix`).
+- PEP 8. Use `ruff` for linting and formatting.
 - All functions must have type hints and return type declarations.
+- Use `from __future__ import annotations` in every source file.
 - No bare `except:` — always catch specific exception types.
+- Use `Path` (pathlib) everywhere — never `os.path`.
 
-## File/Folder Conventions
-- Routers → `app/routers/<resource>.py`
-- Pydantic schemas → `app/schemas/<resource>.py`
-- SQLAlchemy models → `app/models/<resource>.py`
-- Business logic → `app/services/<resource>_service.py`
-- DB session/engine → `app/database.py`
-- Shared dependencies → `app/dependencies.py`
-- Entry point → `app/main.py`
+## Conventions Detected in This Codebase
+- CLI commands are decorated with `@app.command()` on the single `typer.Typer` instance in `cli.py`
+- Template resolution goes through `_template_src(stack)` in `installer.py` — frozen (PyInstaller) vs dev paths handled there
+- Stack detection uses a scoring dict in `analyzer.py`; the highest-scoring key wins
+- Interactive prompts use `rich.prompt.Prompt` and `rich.prompt.Confirm`; non-interactive paths skip them
+- `InstallResult` is a `@dataclass` — used to return counts and metadata from `install()`
+- Async code (MCP probing) lives in `installer.py`; `asyncio.run()` is called once from `install()`
 
 ## Always Do
-- Use `async def` for all route handlers.
-- Return Pydantic `response_model`, never raw dicts.
-- Use `Depends()` for DB sessions and auth.
-- Prefix routers: `/api/v1/<resource>`.
-- Separate request schemas (input) from response schemas (output).
+- Keep `cli.py` as pure UI — no filesystem logic there (that belongs in `installer.py`)
+- Keep `analyzer.py` pure and side-effect-free — only reads, never writes
+- Validate `stack` against `VALID_STACKS` frozenset before any file operations
+- Make `dry_run=True` paths completely read-only (no `shutil`, no `chmod`)
+- Use `Path` objects, not string concatenation, for all file paths
 
 ## Never Do
-- No business logic in route handlers.
-- No `.env` files committed.
-- No `import *`.
-- No `session.commit()` inside a route — service layer owns commits.
+- No business logic in CLI command functions — delegate to `installer.py`
+- No interactive prompts inside `installer.py` or `analyzer.py` — only in `cli.py`
+- No hardcoded stack names outside of `VALID_STACKS` and the mapping dicts in `cli.py`
+- No `.env` files committed
+- No `import *`
 
 ## Testing
-- Tests in `tests/`, mirroring `app/` structure.
-- Use `pytest-asyncio` + `httpx.AsyncClient` for endpoint tests.
-- Run: `pytest -xvs`
+- No tests exist yet — use `pytest -xvs` when adding them
+- Test files go in `tests/`, mirroring `src/clauderig/` structure
+- For `installer.py`: use `tmp_path` fixture for isolated file operations
+- For `analyzer.py`: build fixture directories in `tmp_path` with known signals
+- For `cli.py`: use `typer.testing.CliRunner`
 
-## Recommended MCP Servers
-- **Postgres MCP** — query DB from Claude. Needs: `DATABASE_URL` env var.
+## MCP Servers
 - **GitHub MCP** — browse issues/PRs. Needs: `GITHUB_TOKEN` env var.
 - **Filesystem MCP** — read/write project files. Pre-configured.
-
-Run `.claude/hooks/setup-mcps.sh` to install npm prerequisites.
+- Remove the Postgres MCP entry from `settings.json` — this project has no database.

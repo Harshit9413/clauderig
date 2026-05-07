@@ -1,83 +1,67 @@
 ---
-name: async-db
-description: SQLAlchemy 2.x async session, query, and transaction patterns.
+name: async-subprocess
+description: asyncio subprocess patterns for concurrent process probing, as used in clauderig's MCP prerequisite checker.
 ---
 
-# Async Database (SQLAlchemy 2.x)
+# Async Subprocess Patterns (clauderig)
 
-## Setup
+## Concurrent Process Probing
+
+The pattern used in `src/clauderig/installer.py` to probe MCP npm packages in parallel:
 
 ```python
-# app/database.py
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
-from app.config import settings
+import asyncio
+from pathlib import Path
 
-engine = create_async_engine(settings.database_url, echo=settings.debug)
-AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+async def _probe_package(package: str) -> tuple[str, bool]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "npx", "--yes", "--dry-run", package,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.wait_for(proc.wait(), timeout=8.0)
+        return package, proc.returncode == 0
+    except (asyncio.TimeoutError, FileNotFoundError, OSError):
+        return package, False
 
-class Base(DeclarativeBase):
-    pass
+async def check_prerequisites(packages: list[str]) -> dict[str, bool]:
+    results = await asyncio.gather(*[_probe_package(p) for p in packages])
+    return dict(results)
 
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+# Called from sync context:
+available = asyncio.run(check_prerequisites(["@modelcontextprotocol/server-github"]))
 ```
 
-## Model Definition (typed columns)
+## Capturing Output
 
 ```python
-from sqlalchemy import String, func
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime
-
-class User(Base):
-    __tablename__ = "users"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    name: Mapped[str] = mapped_column(String(100))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+async def run_and_capture(cmd: list[str]) -> tuple[int, str]:
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+    return proc.returncode, stdout.decode(errors="replace")
 ```
 
-## Service Pattern
+## Adding a New MCP Probe
+
+To add a new package check to the installer:
+1. The MCP server list comes from `settings.json` via `_get_mcps()` in `installer.py`
+2. `check_prerequisites()` is called automatically during `install()`
+3. No code changes needed — just add the MCP to the template's `settings.json`
+
+## Testing Async Functions
 
 ```python
-from sqlalchemy import select
+# tests/test_installer.py
+import pytest
+import asyncio
+from clauderig.installer import check_prerequisites
 
-class UserService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def get_by_id(self, user_id: int) -> User | None:
-        result = await self.db.execute(select(User).where(User.id == user_id))
-        return result.scalar_one_or_none()
-
-    async def create(self, data: UserCreate) -> User:
-        user = User(email=data.email, name=data.name)
-        self.db.add(user)
-        await self.db.commit()
-        await self.db.refresh(user)
-        return user
-```
-
-## Explicit Transactions
-
-```python
-async def transfer(self, from_id: int, to_id: int, amount: int):
-    async with self.db.begin():
-        sender = await self.get_by_id(from_id)
-        receiver = await self.get_by_id(to_id)
-        sender.balance -= amount
-        receiver.balance += amount
-        # auto-commit on context exit
-```
-
-## Prevent N+1 with selectinload
-
-```python
-from sqlalchemy.orm import selectinload
-
-result = await self.db.execute(
-    select(User).options(selectinload(User.posts))
-)
+def test_probe_unknown_package():
+    result = asyncio.run(check_prerequisites(["@nonexistent/package-xyz-404"]))
+    assert result["@nonexistent/package-xyz-404"] is False
 ```

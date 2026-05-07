@@ -1,26 +1,25 @@
 ---
-name: add-endpoint
-description: Add a new FastAPI endpoint with router, schema, service, and test.
+name: add-command
+description: Add a new clauderig CLI command with tests.
 ---
 
-# /add-endpoint
+# /add-command
 
 Ask the user:
-1. What resource? (e.g., users, products, orders)
-2. HTTP method? (GET / POST / PUT / PATCH / DELETE)
-3. What does it do?
-4. Does it need authentication?
+1. What is the new command name? (e.g., `validate`, `upgrade`, `info`)
+2. What should it do?
+3. Does it need user prompts (interactive) or is it fully flag-driven?
+4. Should it accept a `--target` directory option?
 
-Then create (or add to existing files):
-- `app/routers/<resource>.py` — route handler only, calls service
-- `app/schemas/<resource>.py` — `<Resource>Create` and `<Resource>Response` Pydantic models
-- `app/services/<resource>_service.py` — business + DB logic
-- `tests/test_<resource>.py` — at least one test using `httpx.AsyncClient`
+Then create or update:
+- `src/clauderig/cli.py` — add `@app.command()` function; delegate filesystem work to `installer.py`
+- `src/clauderig/installer.py` — add any new logic (pure filesystem ops, no prompts)
+- `tests/test_cli.py` — add tests using `typer.testing.CliRunner`
 
 Conventions:
-- Response model uses `model_config = ConfigDict(from_attributes=True)`
-- Route handler uses `db: AsyncSession = Depends(get_db)`
-- Service receives `AsyncSession` in `__init__`
+- Command function body ≤ 20 lines; delegate to installer/analyzer
+- No interactive prompts in `installer.py` — prompts only in `cli.py`
+- Use `Path` everywhere; validate inputs before touching the filesystem
+- Raise `typer.Exit(1)` on error, `typer.Exit(0)` on abort
 
-After creating: mount the router in `app/main.py` if it's a new router.
-Run `pytest -xvs tests/test_<resource>.py` and show output.
+After creating: run `pytest -xvs tests/` and show output.

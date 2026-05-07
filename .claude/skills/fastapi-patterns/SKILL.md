@@ -1,99 +1,116 @@
 ---
-name: fastapi-patterns
-description: FastAPI patterns for routes, dependency injection, middleware, and error handling.
+name: typer-cli-patterns
+description: Typer CLI patterns for commands, options, prompts, and output — as used in clauderig/cli.py.
 ---
 
-# FastAPI Patterns
+# Typer CLI Patterns (clauderig)
 
-## Router Organization
+## Command Structure
 
-One file per resource. Mount all routers in `app/main.py`.
+One `typer.Typer` instance; commands registered with `@app.command()`.
 
 ```python
-# app/routers/users.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import get_db
-from app.schemas.user import UserCreate, UserResponse
-from app.services.user_service import UserService
+# src/clauderig/cli.py
+import typer
+from rich.console import Console
 
-router = APIRouter(prefix="/api/v1/users", tags=["users"])
+app = typer.Typer(help="Bootstrap a production-grade .claude/ setup.", add_completion=False)
+console = Console()
 
-@router.get("/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int, db: AsyncSession = Depends(get_db)):
-    user = await UserService(db).get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
+@app.command()
+def init(
+    lang: Optional[str] = typer.Option(None, help="Language: python, php, react"),
+    target: Path = typer.Option(Path("."), help="Target directory"),
+    force: bool = typer.Option(False, help="Overwrite existing .claude/"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print what would be copied"),
+) -> None:
+    """Bootstrap a .claude/ folder into a project."""
+    ...
 
-@router.post("/", response_model=UserResponse, status_code=201)
-async def create_user(payload: UserCreate, db: AsyncSession = Depends(get_db)):
-    return await UserService(db).create(payload)
+if __name__ == "__main__":
+    app()
 ```
 
-## Shared Dependencies
+## Adding a New Command
 
 ```python
-# app/dependencies.py
-from fastapi import Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.database import get_db
-from app.services.auth_service import AuthService
-
-security = HTTPBearer()
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db=Depends(get_db),
-):
-    user = await AuthService(db).verify_token(credentials.credentials)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return user
+@app.command()
+def validate(
+    target: Path = typer.Option(Path("."), help="Project to validate"),
+) -> None:
+    """Validate an existing .claude/ setup."""
+    dst = target / ".claude"
+    if not dst.exists():
+        console.print("[red]Error:[/red] No .claude/ found.")
+        raise typer.Exit(1)
+    console.print(f"[green]✓[/green] .claude/ found at {dst.resolve()}")
 ```
 
-## Global Error Handling
+## Interactive Prompts (Rich)
 
 ```python
-# in app/main.py
-from fastapi import Request
-from fastapi.responses import JSONResponse
+from rich.prompt import Prompt, Confirm
 
-@app.exception_handler(ValueError)
-async def value_error_handler(request: Request, exc: ValueError):
-    return JSONResponse(status_code=400, content={"detail": str(exc)})
+# Free-form prompt with default
+target_str = Prompt.ask("Target directory?", default=".")
+
+# Confirmed boolean
+if not Confirm.ask("Overwrite?", default=False):
+    console.print("[yellow]Aborted.[/yellow]")
+    raise typer.Exit(0)
+
+# Constrained choice (custom helper in cli.py)
+def _prompt_choice(prompt: str, choices: list[str]) -> str:
+    choices_str = ", ".join(choices)
+    while True:
+        value = Prompt.ask(f"{prompt} ({choices_str})").strip().lower()
+        if value in choices:
+            return value
+        console.print(f"[red]Invalid choice:[/red] {value!r}")
 ```
 
-## Lifespan (use this, not deprecated on_event)
+## Rich Output Patterns
 
 ```python
-from contextlib import asynccontextmanager
+from rich.table import Table
 
-@asynccontextmanager
-async def lifespan(app):
-    await init_db()
-    yield
-    await engine.dispose()
+# Coloured status lines
+console.print(f"[green]✓[/green] Installed {result.commands_count} commands")
+console.print(f"[blue]→[/blue] Detected: [cyan]{stack}[/cyan]")
+console.print("[red]Error:[/red] Use --force to overwrite.")
 
-app = FastAPI(lifespan=lifespan)
+# Table (used in `list` command)
+table = Table(title="Supported Stacks", header_style="bold blue")
+table.add_column("Stack", style="cyan")
+table.add_column("Commands", justify="center")
+table.add_row("Python → FastAPI", "5")
+console.print(table)
 ```
 
-## Background Tasks
+## Testing CLI Commands
 
 ```python
-from fastapi import BackgroundTasks
+# tests/test_cli.py
+from typer.testing import CliRunner
+from clauderig.cli import app
 
-@router.post("/notify")
-async def notify(bg: BackgroundTasks, email: str):
-    bg.add_task(send_email, email)
-    return {"queued": True}
+runner = CliRunner()
+
+def test_version():
+    result = runner.invoke(app, ["version"])
+    assert result.exit_code == 0
+    assert "clauderig" in result.output
+
+def test_init_dry_run(tmp_path):
+    result = runner.invoke(app, ["init", "--lang", "python", "--framework", "fastapi",
+                                  "--target", str(tmp_path), "--dry-run"])
+    assert result.exit_code == 0
+    assert "would copy" in result.output
 ```
 
-## Mounting Routers
+## Exit Codes
 
 ```python
-# app/main.py
-from app.routers import users, products
-app.include_router(users.router)
-app.include_router(products.router)
+raise typer.Exit(0)  # success / user aborted
+raise typer.Exit(1)  # error
 ```
