@@ -38,6 +38,13 @@ def _template_src(stack: str) -> Path:
     return Path(__file__).parent / "templates" / stack / ".claude"
 
 
+def _template_base(stack: str) -> Path:
+    if getattr(sys, "frozen", False):
+        templates_dir = _ensure_templates(Path(sys._MEIPASS))  # type: ignore[attr-defined]
+        return templates_dir / stack
+    return Path(__file__).parent / "templates" / stack
+
+
 VALID_STACKS = frozenset({
     "python-fastapi",
     "python-django",
@@ -112,6 +119,9 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
         )
 
     if dry_run:
+        claude_md_src = _template_base(stack) / "CLAUDE.md"
+        if claude_md_src.exists():
+            print(f"  would copy: CLAUDE.md")
         for item in sorted(src_path.rglob("*")):
             if item.is_file():
                 print(f"  would copy: {item.relative_to(src_path.parent.parent)}")
@@ -124,6 +134,10 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
         shutil.rmtree(str(dst))
 
     shutil.copytree(str(src_path), str(dst))
+
+    claude_md_src = _template_base(stack) / "CLAUDE.md"
+    if claude_md_src.exists():
+        shutil.copy2(str(claude_md_src), str(target / "CLAUDE.md"))
 
     hooks_dir = dst / "hooks"
     if hooks_dir.exists():

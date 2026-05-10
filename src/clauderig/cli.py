@@ -164,6 +164,7 @@ def init(
         return
 
     console.print(f"\n[green]✓[/green] Copied .claude/ to {result.target_path.resolve()}")
+    console.print(f"[green]✓[/green] Created CLAUDE.md at {(target / 'CLAUDE.md').resolve()}")
     console.print(
         f"[green]✓[/green] Installed: {result.commands_count} commands · "
         f"{result.skills_count} skills · {result.hooks_count} hooks · "
