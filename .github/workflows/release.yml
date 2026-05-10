@@ -143,6 +143,7 @@ jobs:
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import
           DEB=$(find "$GITHUB_WORKSPACE/debs" -name "*.deb" | head -1)
           cd "$GITHUB_WORKSPACE/apt-repo"
+          reprepro remove stable clauderig || true
           reprepro includedeb stable "$DEB"
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
