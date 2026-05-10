@@ -39,11 +39,11 @@ _STACK_KEY: dict[str, str] = {
 }
 
 _STACK_INFO: dict[str, dict[str, int]] = {
-    "python-fastapi": {"commands": 5, "skills": 3, "hooks": 2, "mcps": 3},
-    "python-django": {"commands": 5, "skills": 3, "hooks": 2, "mcps": 3},
-    "php": {"commands": 4, "skills": 2, "hooks": 2, "mcps": 3},
-    "react-web": {"commands": 4, "skills": 3, "hooks": 2, "mcps": 3},
-    "react-native": {"commands": 4, "skills": 3, "hooks": 2, "mcps": 2},
+    "python-fastapi": {"commands": 5, "skills": 3, "hooks": 2, "mcps": 3, "agents": 6},
+    "python-django": {"commands": 5, "skills": 3, "hooks": 2, "mcps": 3, "agents": 6},
+    "php": {"commands": 4, "skills": 2, "hooks": 2, "mcps": 3, "agents": 6},
+    "react-web": {"commands": 4, "skills": 3, "hooks": 2, "mcps": 3, "agents": 6},
+    "react-native": {"commands": 4, "skills": 3, "hooks": 2, "mcps": 2, "agents": 6},
 }
 
 _STACK_DISPLAY: dict[str, str] = {
@@ -167,7 +167,7 @@ def init(
     console.print(
         f"[green]✓[/green] Installed: {result.commands_count} commands · "
         f"{result.skills_count} skills · {result.hooks_count} hooks · "
-        f"{result.ruleset_count} ruleset"
+        f"{result.ruleset_count} ruleset · {result.agents_count} agents"
     )
     if result.mcps_configured:
         console.print(f"[green]✓[/green] MCPs pre-configured: {', '.join(result.mcps_configured)}")
@@ -185,6 +185,7 @@ def list_stacks() -> None:
     table.add_column("Commands", justify="center")
     table.add_column("Skills", justify="center")
     table.add_column("Hooks", justify="center")
+    table.add_column("Agents", justify="center")
     table.add_column("MCPs", justify="center")
 
     for key, info in _STACK_INFO.items():
@@ -193,6 +194,7 @@ def list_stacks() -> None:
             str(info["commands"]),
             str(info["skills"]),
             str(info["hooks"]),
+            str(info["agents"]),
             str(info["mcps"]),
         )
 

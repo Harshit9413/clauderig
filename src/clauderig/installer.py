@@ -53,6 +53,7 @@ class InstallResult:
     skills_count: int
     hooks_count: int
     ruleset_count: int
+    agents_count: int
     mcps_configured: list[str]
     target_path: Path
 
@@ -116,7 +117,7 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
                 print(f"  would copy: {item.relative_to(src_path.parent.parent)}")
         return InstallResult(
             commands_count=0, skills_count=0, hooks_count=0,
-            ruleset_count=0, mcps_configured=[], target_path=dst,
+            ruleset_count=0, agents_count=0, mcps_configured=[], target_path=dst,
         )
 
     if dst.exists() and force:
@@ -137,6 +138,7 @@ def install(stack: str, target: Path, force: bool, dry_run: bool) -> InstallResu
         skills_count=_count_dir(dst / "skills"),
         hooks_count=_count_dir(dst / "hooks"),
         ruleset_count=_count_dir(dst / "rules"),
+        agents_count=_count_dir(dst / "agents"),
         mcps_configured=_get_mcps(dst / "settings.json"),
         target_path=dst,
     )
