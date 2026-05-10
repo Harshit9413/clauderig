@@ -32,9 +32,13 @@ def _ensure_templates(meipass: Path) -> Path:
 def _template_src(stack: str) -> Path:
     if getattr(sys, "frozen", False):
         templates_dir = _ensure_templates(Path(sys._MEIPASS))  # type: ignore[attr-defined]
-        base = templates_dir / stack
-        with_dot_claude = base / ".claude"
-        return with_dot_claude if with_dot_claude.is_dir() else base
+        with_dot_claude = templates_dir / stack / ".claude"
+        if not with_dot_claude.is_dir():
+            raise FileNotFoundError(
+                f"Template bundle is corrupt: {with_dot_claude} not found. "
+                "Please reinstall clauderig."
+            )
+        return with_dot_claude
     return Path(__file__).parent / "templates" / stack / ".claude"
 
 
