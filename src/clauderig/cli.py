@@ -9,7 +9,7 @@ from rich.prompt import Prompt, Confirm
 
 from clauderig import __version__
 from clauderig.analyzer import detect_framework, detect_language, detect_stack
-from clauderig.installer import install
+from clauderig.installer import install, _template_src, _count_dir, _get_mcps
 
 app = typer.Typer(
     help="Bootstrap a production-grade .claude/ setup into any project.",
@@ -38,14 +38,6 @@ _STACK_KEY: dict[str, str] = {
     "php": "php",
 }
 
-_STACK_INFO: dict[str, dict[str, int]] = {
-    "python-fastapi": {"commands": 5, "skills": 3, "hooks": 2, "mcps": 3, "agents": 6},
-    "python-django": {"commands": 5, "skills": 3, "hooks": 2, "mcps": 3, "agents": 6},
-    "php": {"commands": 4, "skills": 2, "hooks": 2, "mcps": 3, "agents": 6},
-    "react-web": {"commands": 4, "skills": 3, "hooks": 2, "mcps": 3, "agents": 6},
-    "react-native": {"commands": 4, "skills": 3, "hooks": 2, "mcps": 2, "agents": 6},
-}
-
 _STACK_DISPLAY: dict[str, str] = {
     "python-fastapi": "Python → FastAPI",
     "python-django": "Python → Django",
@@ -53,6 +45,17 @@ _STACK_DISPLAY: dict[str, str] = {
     "react-web": "React → ReactJS (Web)",
     "react-native": "React → React Native",
 }
+
+
+def _live_stack_info(stack: str) -> dict[str, int]:
+    src = _template_src(stack)
+    return {
+        "commands": _count_dir(src / "commands"),
+        "skills":   _count_dir(src / "skills"),
+        "hooks":    _count_dir(src / "hooks"),
+        "agents":   _count_dir(src / "agents"),
+        "mcps":     len(_get_mcps(src / "settings.json")),
+    }
 
 
 def _prompt_choice(prompt: str, choices: list[str]) -> str:
@@ -189,7 +192,8 @@ def list_stacks() -> None:
     table.add_column("Agents", justify="center")
     table.add_column("MCPs", justify="center")
 
-    for key, info in _STACK_INFO.items():
+    for key in _STACK_DISPLAY:
+        info = _live_stack_info(key)
         table.add_row(
             _STACK_DISPLAY[key],
             str(info["commands"]),
