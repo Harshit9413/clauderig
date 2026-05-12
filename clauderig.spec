@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import zipfile
 
@@ -7,6 +8,13 @@ APP_NAME = "clauderig"
 ENTRY_POINT = "src/clauderig/cli.py"
 
 sys.path.insert(0, os.path.join(SPECPATH, "src"))
+
+# Bake version from pyproject.toml into _version.py so frozen binary shows correct version
+with open(os.path.join(SPECPATH, "pyproject.toml")) as _f:
+    _m = re.search(r'^version\s*=\s*"([^"]+)"', _f.read(), re.MULTILINE)
+_baked_version = _m.group(1) if _m else "0.0.0"
+with open(os.path.join(SPECPATH, "src", "clauderig", "_version.py"), "w") as _f:
+    _f.write(f'__version__ = "{_baked_version}"\n')
 
 _tmpl_src = os.path.join(SPECPATH, "src", "clauderig", "templates")
 _zip_path = os.path.join(SPECPATH, "templates_bundle.zip")

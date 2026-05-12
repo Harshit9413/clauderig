@@ -3,4 +3,7 @@ from importlib.metadata import version, PackageNotFoundError
 try:
     __version__ = version("clauderig")
 except PackageNotFoundError:
-    __version__ = "0.1.0"
+    try:
+        from clauderig._version import __version__
+    except ImportError:
+        __version__ = "0.0.0"
